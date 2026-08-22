@@ -20,15 +20,15 @@ import kotlin.math.tanh
 import kotlin.random.Random
 
 /**
- * En pulskaraktär.
+ * One click character.
  *
- * Alla fem bygger på samma modell — en impuls exciterar tre resonatorer som
- * klingar av. Det som skiljer dem åt är hur apparaten är byggd: hur stor lådan
- * är, om högtalaren sitter i en bakelitburk eller ett öronskal, hur hårt
- * slutsteget drivs.
+ * All five share the same model — an impulse excites three resonators that ring
+ * down. What separates them is the instrument you imagine: how big the box is,
+ * whether the speaker sits in a bakelite case or an earpiece, how hard the
+ * output stage is driven.
  *
- * kropp = grundklangen, bett = den metalliska mitten, snärt = transienten.
- * Varje resonator anges som frekvens (Hz), Q (hur länge den ringer) och nivå.
+ * body = the fundamental tone, bite = the metallic midrange, snap = the transient.
+ * Each resonator is given as frequency (Hz), Q (how long it rings) and level.
  */
 data class Preset(
     val name: String,
@@ -36,59 +36,59 @@ data class Preset(
     val body: Triple<Float, Float, Float>,
     val bite: Triple<Float, Float, Float>,
     val snap: Triple<Float, Float, Float>,
-    val decay: Float,      // envelopens tidskonstant, sekunder
-    val noiseMs: Float,    // brusknäppet i excitationen
+    val decay: Float,      // envelope time constant, seconds
+    val noiseMs: Float,    // noise burst in the excitation
     val noiseAmt: Float,
-    val sat: Float,        // hur hårt högtalaren mättas
+    val sat: Float,        // how hard the speaker saturates
     val lenMs: Float,
-    val trim: Float        // nivåutjämning mellan karaktärerna
+    val trim: Float        // level matching between the characters
 )
 
 val PRESETS = listOf(
-    Preset("TORRT", "liten burk",
+    Preset("DRY", "tin can",
         Triple(1000f, 9f, 0.75f), Triple(2700f, 14f, 1.00f), Triple(5900f, 4f, 0.40f),
         0.0022f, 0.40f, 0.8f, 2.2f, 18f, 1.00f),
-    Preset("DOSIMETER", "sovjetisk",
+    Preset("DOSIMETER", "soviet",
         Triple(780f, 12f, 1.00f), Triple(1900f, 18f, 0.90f), Triple(3600f, 7f, 0.35f),
         0.0060f, 0.80f, 0.7f, 3.0f, 30f, 0.92f),
-    Preset("HÖRLUR", "öronsnäcka",
+    Preset("EARPIECE", "headphone",
         Triple(2200f, 6f, 0.30f), Triple(4200f, 9f, 1.00f), Triple(7800f, 5f, 0.60f),
         0.0012f, 0.25f, 1.0f, 1.5f, 10f, 1.05f),
     Preset("PIEZO", "digital",
         Triple(3000f, 30f, 0.60f), Triple(4100f, 40f, 1.00f), Triple(8200f, 6f, 0.25f),
         0.0080f, 0.20f, 0.4f, 1.2f, 25f, 0.88f),
-    Preset("SKRAMMEL", "grov",
+    Preset("RATTLE", "coarse",
         Triple(600f, 7f, 1.00f), Triple(1500f, 9f, 0.80f), Triple(3000f, 5f, 0.60f),
         0.0040f, 2.50f, 1.0f, 4.0f, 22f, 0.95f)
 )
 
 /**
- * Ljudmotorn.
+ * The audio engine.
  *
- * Tidpunkterna är det viktiga: radioaktivt sönderfall är en poissonprocess, så
- * för varje block drar vi antalet pulser ur en poissonfördelning och placerar
- * dem på slumpmässiga sampelpositioner. Det är därför en riktig apparat låter
- * oregelbunden i stället för som en metronom.
+ * The timing is what matters: radioactive decay is a Poisson process, so for
+ * every block we draw the number of clicks from a Poisson distribution and place
+ * them at random sample positions. That is why a real instrument sounds ragged
+ * rather than like a metronome.
  */
 class GeigerEngine {
 
     companion object {
         const val SAMPLE_RATE = 48000
-        private const val BLOCK = 480            // 10 ms per mixomgång
-        private const val VARIANTS = 24          // olika pulser, ger variation
-        private const val MAX_PER_BLOCK = 400    // tak, skyddar mot överbelastning
-        private const val MAX_CLICK = 1440       // 30 ms — den längsta karaktären
+        private const val BLOCK = 480            // 10 ms per mix pass
+        private const val VARIANTS = 24          // distinct clicks, for variation
+        private const val MAX_PER_BLOCK = 400    // ceiling, guards against overload
+        private const val MAX_CLICK = 1440       // 30 ms — the longest character
 
-        const val MIN_RATE = 0.4f                // bakgrundsstrålning
-        const val MAX_RATE = 1400f               // dödlig dos
+        const val MIN_RATE = 0.4f                // background radiation
+        const val MAX_RATE = 1400f               // lethal dose
 
-        /** Reglagets läge (0..1) till pulser per sekund, exponentiellt. */
+        /** Slider position (0..1) to counts per second, exponentially. */
         fun positionToRate(p: Float): Float =
             if (p <= 0.001f) 0f
             else MIN_RATE * (MAX_RATE / MIN_RATE).toDouble().pow(p.toDouble()).toFloat()
     }
 
-    /** Antal pulser sedan start — UI:t använder det för blinket. */
+    /** Clicks played since start — the UI uses it for the flicker. */
     val pulseCount = AtomicInteger(0)
 
     @Volatile var rate: Float = 0f
@@ -103,14 +103,14 @@ class GeigerEngine {
     fun setPreset(index: Int) {
         if (index == presetIndex) return
         presetIndex = index
-        clicks = renderBank(PRESETS[index])      // byts atomärt, mixern ser den nya
+        clicks = renderBank(PRESETS[index])      // swapped atomically; mixer picks it up
     }
 
     fun currentPreset() = presetIndex
 
-    // ---------------------------------------------------------------- syntes
+    // -------------------------------------------------------------- synthesis
 
-    /** Bandpassfilter (RBJ-biquad) kört över hela excitationen. */
+    /** Band-pass filter (RBJ biquad) run across the whole excitation. */
     private fun bandpass(input: FloatArray, f0: Float, q: Float): FloatArray {
         val w0 = 2.0 * PI * f0 / SAMPLE_RATE
         val alpha = sin(w0) / (2.0 * q)
@@ -133,10 +133,10 @@ class GeigerEngine {
     private fun renderBank(p: Preset): Array<FloatArray> = Array(VARIANTS) { renderClick(p, it) }
 
     private fun renderClick(p: Preset, index: Int): FloatArray {
-        val r = Random(1000L + index)            // deterministiskt per variant
+        val r = Random(1000L + index)            // deterministic per variant
         val n = min(MAX_CLICK, (p.lenMs / 1000f * SAMPLE_RATE).toInt())
 
-        // Excitation: spänningsspiken plus ett kort brusknäpp
+        // Excitation: the voltage spike plus a short noise burst
         val exc = FloatArray(n)
         exc[0] = 1f
         val noiseLen = max(1, (p.noiseMs / 1000f * SAMPLE_RATE).toInt())
@@ -144,7 +144,7 @@ class GeigerEngine {
             exc[i] += (r.nextFloat() * 2f - 1f) * (1f - i.toFloat() / noiseLen) * p.noiseAmt
         }
 
-        val j = index.toFloat() / VARIANTS       // variation puls till puls
+        val j = index.toFloat() / VARIANTS       // variation from click to click
         fun reson(spec: Triple<Float, Float, Float>, spread: Float) =
             bandpass(exc, spec.first * (1f + j * 0.10f) + r.nextFloat() * spread, spec.second)
 
@@ -158,11 +158,11 @@ class GeigerEngine {
             val t = i.toFloat() / SAMPLE_RATE
             val env = exp(-t / p.decay)
             var v = (body[i] * p.body.third + bite[i] * p.bite.third + snap[i] * p.snap.third) * env
-            v = tanh(v * p.sat) / p.sat          // högtalarmättnad
+            v = tanh(v * p.sat) / p.sat          // speaker saturation
             out[i] = v
             if (abs(v) > peak) peak = abs(v)
         }
-        // Normalisera, och tona ut slutet så bufferten landar i noll
+        // Normalise, and fade the tail so the buffer lands on zero
         val fade = (0.0015f * SAMPLE_RATE).toInt()
         for (i in 0 until n) {
             var g = p.trim / peak
@@ -172,24 +172,24 @@ class GeigerEngine {
         return out
     }
 
-    // ------------------------------------------------------------ sönderfall
+    // ------------------------------------------------------------------ decay
 
-    /** Antal händelser i ett tidsfönster med väntevärde [lambda]. */
+    /** Number of events in a window with expected value [lambda]. */
     private fun poisson(lambda: Float): Int {
         if (lambda <= 0f) return 0
-        if (lambda < 30f) {                                     // Knuths metod
+        if (lambda < 30f) {                                     // Knuth's method
             val l = exp(-lambda.toDouble())
             var k = 0
             var p = 1.0
             do { k++; p *= rnd.nextDouble() } while (p > l)
             return k - 1
         }
-        val u1 = rnd.nextDouble(); val u2 = rnd.nextDouble()     // normalapprox
+        val u1 = rnd.nextDouble(); val u2 = rnd.nextDouble()     // normal approximation
         val z = sqrt(-2.0 * ln(1.0 - u1)) * cos(2.0 * PI * u2)
         return max(0, (lambda + sqrt(lambda) * z.toFloat()).toInt())
     }
 
-    // ----------------------------------------------------------- uppspelning
+    // -------------------------------------------------------------- playback
 
     fun start() {
         if (running) return
@@ -235,8 +235,8 @@ class GeigerEngine {
     }
 
     private fun mixLoop(t: AudioTrack) {
-        // Ackumulatorn är längre än blocket: en puls som börjar sent i ett block
-        // måste kunna klinga vidare in i nästa.
+        // The accumulator is longer than the block: a click starting late in one
+        // block has to be able to ring on into the next.
         val acc = FloatArray(BLOCK + MAX_CLICK)
         val out = ShortArray(BLOCK)
         val satNorm = tanh(1.7f)
@@ -248,11 +248,11 @@ class GeigerEngine {
             val r = rate
             val bank = clicks
 
-            // --- pulser i det här blocket ---
+            // --- clicks in this block ---
             if (r > 0f) {
                 val lambda = r * BLOCK / SAMPLE_RATE
                 val n = min(poisson(lambda), MAX_PER_BLOCK)
-                // Tätare pulser → lägre nivå per puls, annars spårar summan ur
+                // Denser clicks → lower level each, otherwise the sum runs away
                 val gs = 1f / sqrt(max(1f, r / 60f))
                 for (k in 0 until n) {
                     val off = rnd.nextInt(BLOCK)
@@ -263,30 +263,30 @@ class GeigerEngine {
                 if (n > 0) pulseCount.addAndGet(n)
             }
 
-            // --- detektorbrus: limmar ihop pulserna när de smälter samman ---
+            // --- detector hiss: glues the clicks together as they merge ---
             val hiss = if (r < 150f) 0f else min(0.055f, (r - 150f) / 1250f * 0.055f)
             if (hiss > 0f) {
                 for (i in 0 until BLOCK) {
                     val w = rnd.nextFloat() * 2f - 1f
                     hissLp += (w - hissLp) * 0.35f
-                    hissA += (hissLp - hissA) * 0.25f          // enkel resonans
+                    hissA += (hissLp - hissA) * 0.25f          // simple resonance
                     hissB += (hissA - hissB) * 0.08f
                     acc[i] += (hissA - hissB) * hiss * 3f
                 }
             }
 
-            // --- ut ---
+            // --- out ---
             for (i in 0 until BLOCK) {
                 var v = tanh(acc[i] * 1.7f) / satNorm * 0.9f
                 if (v > 1f) v = 1f else if (v < -1f) v = -1f
                 out[i] = (v * 32000f).toInt().toShort()
             }
 
-            // Skjut ner svansen och nolla det som frigjorts
+            // Shift the tail down and clear what was freed
             System.arraycopy(acc, BLOCK, acc, 0, acc.size - BLOCK)
             java.util.Arrays.fill(acc, acc.size - BLOCK, acc.size, 0f)
 
-            t.write(out, 0, BLOCK)   // blockerar tills ljudkortet vill ha mer
+            t.write(out, 0, BLOCK)   // blocks until the audio device wants more
         }
     }
 }

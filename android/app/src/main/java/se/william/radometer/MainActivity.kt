@@ -78,13 +78,13 @@ class MainActivity : Activity() {
             setPadding(0, dp(6f), 0, 0)
         }
         col.addView(cpsView)
-        col.addView(label("PULSER / SEKUND", 11f, GREEN_MID, 0.3f))
+        col.addView(label("COUNTS / SECOND", 11f, GREEN_MID, 0.3f))
 
         doseView = label("0.00 µSv/h", 14f, GREEN_MID).apply { setPadding(0, dp(8f), 0, 0) }
         col.addView(doseView)
 
-        // --- ljudväljaren ---
-        col.addView(label("▸ VÄLJ PULSLJUD", 9f, GREEN_DIM, 0.3f).apply {
+        // --- sound picker ---
+        col.addView(label("▸ SELECT CLICK SOUND", 9f, GREEN_DIM, 0.3f).apply {
             setPadding(0, dp(18f), 0, dp(8f))
         })
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -104,7 +104,7 @@ class MainActivity : Activity() {
         }
         col.addView(row, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
-        // --- reglaget, mitt på skärmen ---
+        // --- the slider, centred on screen ---
         col.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, 0, 1f))
 
         val slider = RadSlider(this)
@@ -120,7 +120,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.HORIZONTAL
             setPadding(0, dp(10f), 0, 0)
         }
-        listOf("SÄKER", "BAKGRUND", "FÖRHÖJD", "FARA", "DÖDLIG").forEachIndexed { i, s ->
+        listOf("SAFE", "BACKGROUND", "ELEVATED", "DANGER", "LETHAL").forEachIndexed { i, s ->
             scale.addView(
                 label(s, 8f, GREEN_DIM, 0.2f).apply {
                     gravity = when (i) {
@@ -134,12 +134,12 @@ class MainActivity : Activity() {
         }
         col.addView(scale, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
 
-        hintView = label("▸ DRA REGLAGET", 11f, AMBER, 0.28f).apply {
+        hintView = label("▸ DRAG THE SLIDER", 11f, AMBER, 0.28f).apply {
             setPadding(0, dp(18f), 0, 0)
         }
         col.addView(hintView)
 
-        // Tyngre vikt under än över, annars hamnar reglaget under skärmens mitt
+        // Heavier weight below than above, or the slider sits below centre
         col.addView(View(this), LinearLayout.LayoutParams(MATCH_PARENT, 0, 2.6f))
 
         root.addView(col, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
@@ -165,11 +165,11 @@ class MainActivity : Activity() {
     private fun refreshReadout(rate: Float) {
         cpsView.text = if (rate < 10f) String.format("%.1f", rate) else rate.roundToInt().toString()
         cpsView.setTextColor(if (rate > 300f) RED else if (rate > 40f) AMBER else GREEN)
-        // SBM-20-tub: ungefär 151 pulser per minut motsvarar 1 µSv/h
+        // SBM-20 tube: roughly 151 counts per minute equals 1 µSv/h
         doseView.text = String.format("%.2f µSv/h", rate * 60f / 151f)
     }
 
-    // -------------------------------------------------------------- livscykel
+    // -------------------------------------------------------------- lifecycle
 
     override fun onResume() {
         super.onResume()
@@ -180,10 +180,10 @@ class MainActivity : Activity() {
     override fun onPause() {
         super.onPause()
         ui.removeCallbacks(blink)
-        engine.stop()          // inget ljud och ingen tråd i bakgrunden
+        engine.stop()          // no audio and no thread left in the background
     }
 
-    /** Skärmen andas svagt i takt med pulserna. */
+    /** The readout breathes faintly in time with the clicks. */
     private val blink = object : Runnable {
         override fun run() {
             val c = engine.pulseCount.get()
@@ -198,7 +198,7 @@ class MainActivity : Activity() {
     }
 }
 
-/** Bildrörskänslan: tunna mörka linjer tvärs över hela skärmen. */
+/** The CRT feel: thin dark lines across the whole screen. */
 private class ScanlineView(context: android.content.Context) : View(context) {
     private val paint = Paint()
 

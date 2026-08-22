@@ -10,9 +10,9 @@ import android.view.MotionEvent
 import android.view.View
 
 /**
- * Reglaget: ett brett fält tvärs över skärmen som man drar i, eller trycker
- * någonstans på för att hoppa dit. Ritat för hand — en vanlig SeekBar går inte
- * att få så här stor och grön utan att slåss med temat.
+ * The slider: a wide bar across the screen you drag, or tap anywhere on to jump
+ * to. Drawn by hand — a stock SeekBar cannot be made this large and this green
+ * without fighting the theme.
  */
 class RadSlider(context: Context) : View(context) {
 
@@ -64,7 +64,7 @@ class RadSlider(context: Context) : View(context) {
         canvas.drawRoundRect(track, radius, radius, trackPaint)
         canvas.drawRoundRect(track, radius, radius, fillPaint)
 
-        // Skalstreck, som på en analog panel
+        // Tick marks, like an analogue panel
         var x = track.left
         val step = track.width() / 40f
         while (x < track.right) {
@@ -73,7 +73,7 @@ class RadSlider(context: Context) : View(context) {
         }
         canvas.drawRoundRect(track, radius, radius, borderPaint)
 
-        // Greppet
+        // The grip
         val cx = track.left + value * track.width()
         thumb.set(cx - thumbW / 2f, 0f, cx + thumbW / 2f, height.toFloat())
         canvas.drawRoundRect(

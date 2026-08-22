@@ -1,1 +1,1 @@
-# Vyerna skapas i kod, inte från XML, så inga extra keep-regler behövs.
+# Views are created in code, not from XML, so no extra keep rules are needed.

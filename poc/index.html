@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -48,7 +48,7 @@
   .dose{margin-top:8px;font-size:clamp(12px,3.6vw,16px);color:var(--green-dim);font-variant-numeric:tabular-nums;}
   .dose b{color:var(--green-mid);font-weight:600;}
 
-  /* ---------- ljudväljare ---------- */
+  /* ---------- sound picker ---------- */
   .picker{
     flex:0 0 auto;padding:14px 12px 0;
   }
@@ -72,7 +72,7 @@
   }
   .opt.sel span{color:var(--green-mid);}
 
-  /* ---------- reglaget ---------- */
+  /* ---------- the slider ---------- */
   main{flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;padding:0 16px;}
   input[type=range]{
     -webkit-appearance:none;appearance:none;width:100%;height:100px;
@@ -118,53 +118,53 @@
 <header>
   <div class="brand">Rad-O-Meter</div>
   <div class="cps" id="cps">0</div>
-  <div class="unit">Pulser / sekund</div>
+  <div class="unit">Counts / second</div>
   <div class="dose"><b id="dose">0.00</b> µSv/h</div>
 </header>
 
 <div class="picker">
-  <div class="picker-label">▸ VÄLJ PULSLJUD — BYT NÄR SOM HELST</div>
+  <div class="picker-label">▸ PICK A CLICK SOUND — SWITCH ANY TIME</div>
   <div class="opts" id="opts"></div>
 </div>
 
 <main>
-  <input type="range" id="slider" min="0" max="1000" value="0" step="1" aria-label="Strålningsnivå">
+  <input type="range" id="slider" min="0" max="1000" value="0" step="1" aria-label="Radiation level">
   <div class="scale">
-    <span>SÄKER</span><span>BAKGRUND</span><span>FÖRHÖJD</span><span>FARA</span><span>DÖDLIG</span>
+    <span>SAFE</span><span>BACKGROUND</span><span>ELEVATED</span><span>DANGER</span><span>LETHAL</span>
   </div>
-  <div class="hint" id="hint">▸ DRA REGLAGET</div>
+  <div class="hint" id="hint">▸ DRAG THE SLIDER</div>
 </main>
 
-<footer>PoC · procedurell syntes · poissonfördelat sönderfall</footer>
+<footer>PoC · procedural synthesis · Poisson-distributed decay</footer>
 
 <script>
 "use strict";
 
 /* ============================================================
-   PULSKARAKTÄRER
+   CLICK CHARACTERS
 
-   Alla fem bygger på samma modell: en impuls exciterar tre
-   resonatorer som klingar av. Det som skiljer dem åt är hur
-   apparaten är byggd — hur stor lådan är, om högtalaren sitter
-   i en bakelitburk eller i ett öronskal, hur hårt steget drivs.
+   All five share the same model: an impulse excites three
+   resonators that ring down. What separates them is how the
+   instrument is built — how big the box is, whether the speaker
+   sits in a bakelite case or an earpiece, how hard it is driven.
 
-   kropp = grundklangen, bett = den metalliska mitten,
-   snärt  = transienten högst upp.
+   body = the fundamental tone, bite = the metallic midrange,
+   snap = the transient on top.
    ============================================================ */
 
 const PRESETS = [
   {
-    id:'torr', name:'TORRT', desc:'liten burk',
+    id:'dry', name:'DRY', desc:'tin can',
     body:[1000, 9,0.75], bite:[2700,14,1.00], snap:[5900, 4,0.40],
     decay:0.0022, noiseMs:0.4, noiseAmt:0.8, sat:2.2, lenMs:18, trim:1.00
   },
   {
-    id:'dp5', name:'DOSIMETER', desc:'sovjetisk',
+    id:'dp5', name:'DOSIMETER', desc:'soviet',
     body:[ 780,12,1.00], bite:[1900,18,0.90], snap:[3600, 7,0.35],
     decay:0.0060, noiseMs:0.8, noiseAmt:0.7, sat:3.0, lenMs:30, trim:0.92
   },
   {
-    id:'lur', name:'HÖRLUR', desc:'öronsnäcka',
+    id:'ear', name:'EARPIECE', desc:'headphone',
     body:[2200, 6,0.30], bite:[4200, 9,1.00], snap:[7800, 5,0.60],
     decay:0.0012, noiseMs:0.25,noiseAmt:1.0, sat:1.5, lenMs:10, trim:1.05
   },
@@ -174,16 +174,16 @@ const PRESETS = [
     decay:0.0080, noiseMs:0.2, noiseAmt:0.4, sat:1.2, lenMs:25, trim:0.88
   },
   {
-    id:'skrammel', name:'SKRAMMEL', desc:'grov',
+    id:'rattle', name:'RATTLE', desc:'coarse',
     body:[ 600, 7,1.00], bite:[1500, 9,0.80], snap:[3000, 5,0.60],
     decay:0.0040, noiseMs:2.5, noiseAmt:1.0, sat:4.0, lenMs:22, trim:0.95
   }
 ];
 
-let preset = PRESETS[1];          // startar på dosimetern
+let preset = PRESETS[1];          // start on the dosimeter
 
 /* ============================================================
-   1. SYNTES
+   1. SYNTHESIS
    ============================================================ */
 
 let ctx = null, master = null, hissGain = null;
@@ -206,11 +206,11 @@ function bandpass(input, f0, Q, fs){
 function renderClick(p, fs, i){
   const len = Math.floor(fs*p.lenMs/1000);
   const exc = new Float32Array(len);
-  exc[0] = 1;                                        // spänningsspiken
+  exc[0] = 1;                                        // the voltage spike
   const nl = Math.max(1, Math.floor(fs*p.noiseMs/1000));
   for(let n=0;n<nl;n++) exc[n] += (Math.random()*2-1)*(1-n/nl)*p.noiseAmt;
 
-  const j = i/12;                                    // variation puls till puls
+  const j = i/12;                                    // variation click to click
   const w = (spec, spread) => bandpass(exc, spec[0]*(1 + j*0.10) + Math.random()*spread, spec[1], fs);
   const body = w(p.body, 120), bite = w(p.bite, 260), snap = w(p.snap, 500);
 
@@ -220,14 +220,14 @@ function renderClick(p, fs, i){
     const t = n/fs;
     const env = Math.exp(-t/p.decay);
     let v = (body[n]*p.body[2] + bite[n]*p.bite[2] + snap[n]*p.snap[2]) * env;
-    v = Math.tanh(v*p.sat)/p.sat;                    // högtalarmättnad
+    v = Math.tanh(v*p.sat)/p.sat;                    // speaker saturation
     out[n] = v;
     const a = Math.abs(v); if(a>peak) peak = a;
   }
   const fade = Math.floor(fs*0.0015);
   for(let n=0;n<len;n++){
     let g = p.trim/peak;
-    if(n > len-fade) g *= (len-n)/fade;              // sluta i noll
+    if(n > len-fade) g *= (len-n)/fade;              // land on zero
     out[n] *= g;
   }
   const ab = ctx.createBuffer(1, len, fs);
@@ -262,7 +262,7 @@ function initAudio(){
 
   buildBuffers();
 
-  // Brusbädd: vid höga intensiteter smälter pulserna ihop till ett vrål
+  // Hiss bed: at high rates the clicks merge into a roar
   const nb = ctx.createBuffer(1, fs*2, fs);
   const nd = nb.getChannelData(0);
   let lp = 0;
@@ -280,7 +280,7 @@ function initAudio(){
 }
 
 /* ============================================================
-   2. SÖNDERFALLET  (poissonprocess)
+   2. THE DECAY  (Poisson process)
    ============================================================ */
 
 const SCHED_MS = 25, LOOKAHEAD = 0.10, MAX_WINDOW = 0.30, MAX_PER_TICK = 300;
@@ -288,12 +288,12 @@ let rate = 0, scheduledUntil = 0, pulseCounter = 0;
 
 function poisson(lam){
   if(lam <= 0) return 0;
-  if(lam < 30){                                     // Knuth
+  if(lam < 30){                                     // Knuth's method
     const L = Math.exp(-lam); let k=0, p=1;
     do { k++; p *= Math.random(); } while(p > L);
     return k-1;
   }
-  const u1=Math.random(), u2=Math.random();          // normalapproximation
+  const u1=Math.random(), u2=Math.random();          // normal approximation
   const z = Math.sqrt(-2*Math.log(1-u1))*Math.cos(2*Math.PI*u2);
   return Math.max(0, Math.round(lam + Math.sqrt(lam)*z));
 }
@@ -322,7 +322,7 @@ function scheduler(){
   if(rate > 0){
     let n = poisson(rate*dt);
     if(n > MAX_PER_TICK) n = MAX_PER_TICK;
-    // Tätare pulser → lägre nivå per puls, annars spårar summan ur
+    // Denser clicks -> lower level each, or the sum runs away
     const gs = 1/Math.sqrt(Math.max(1, rate/60));
     for(let k=0;k<n;k++) scheduleClick(scheduledUntil + Math.random()*dt, gs);
   }
@@ -330,7 +330,7 @@ function scheduler(){
 }
 
 /* ============================================================
-   3. REGLAGE → INTENSITET
+   3. SLIDER -> RATE
    ============================================================ */
 
 const MIN_RATE = 0.4, MAX_RATE = 1400;
@@ -347,7 +347,7 @@ function selectPreset(i){
   [...optsEl.children].forEach((c,k) => c.classList.toggle('sel', k === i));
   if(ctx){
     if(ctx.state === 'suspended') ctx.resume();
-    buildBuffers();                                  // byter ljud direkt
+    buildBuffers();                                  // swaps the sound at once
   }
 }
 
@@ -357,7 +357,7 @@ PRESETS.forEach((p, i) => {
   b.addEventListener('click', () => { initAudio(); selectPreset(i); });
   optsEl.appendChild(b);
 });
-selectPreset(1);                                      // startar på dosimetern
+selectPreset(1);                                      // start on the dosimeter
 
 function onInput(){
   initAudio();
@@ -374,7 +374,7 @@ slider.addEventListener('input', onInput);
 slider.addEventListener('pointerdown', onInput);
 slider.addEventListener('touchstart', onInput, {passive:true});
 
-/* 1–5 på tangentbordet byter ljud, för snabb A/B */
+/* Keys 1-5 switch sound, for quick A/B */
 window.addEventListener('keydown', e => {
   if(e.repeat || e.metaKey || e.ctrlKey || e.altKey) return;
   const i = '12345'.indexOf(e.key);
@@ -382,7 +382,7 @@ window.addEventListener('keydown', e => {
 });
 
 /* ============================================================
-   4. VISNING
+   4. READOUT
    ============================================================ */
 
 function render(){

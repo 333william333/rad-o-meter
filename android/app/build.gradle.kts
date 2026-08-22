@@ -6,7 +6,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-// Signeringsnycklarna ligger utanför git. Saknas de går debug-bygget ändå.
+// Signing keys live outside git. Without them the debug build still works.
 val keystorePropsFile = rootProject.file("keystore.properties")
 val keystoreProps = Properties().apply {
     if (keystorePropsFile.exists()) FileInputStream(keystorePropsFile).use { load(it) }

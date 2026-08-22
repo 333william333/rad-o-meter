@@ -1,102 +1,103 @@
 # ☢ Rad-O-Meter
 
-**En geigermätare som inte mäter någonting.** Dra i reglaget och hör rummet gå från
-knäpptyst till dödligt — från ett ensamt tick i minuten till ett obehagligt vrål på
-1400 pulser i sekunden. Ingen strålning inblandad, bara ljud.
+**A Geiger counter that measures absolutely nothing.** Drag the slider and listen to
+the room go from dead silent to lethal — from a lonely tick every few seconds to an
+ugly roar at 1400 counts per second. No radiation involved. Just sound.
 
 <p align="center">
-  <img src="docs/01-idle.png" width="200" alt="Viloläge">
-  <img src="docs/04-bakgrund.png" width="200" alt="Bakgrundsnivå">
-  <img src="docs/02-forhojd.png" width="200" alt="Förhöjd nivå">
-  <img src="docs/03-dodlig.png" width="200" alt="Dödlig nivå">
+  <img src="docs/01-idle.png" width="200" alt="Idle">
+  <img src="docs/02-background.png" width="200" alt="Background level">
+  <img src="docs/03-elevated.png" width="200" alt="Elevated level">
+  <img src="docs/04-lethal.png" width="200" alt="Lethal level">
 </p>
 
 ---
 
-## Vad är det här
+## What this is
 
-Ett litet leksaksinstrument för Android. Ett brett reglage tvärs över skärmen, en
-grön bildrörspanel, och fem olika pulsljud du byter mellan medan det låter. Perfekt
-att skrämma folk med i mörkret, lägga bakom en filmscen, eller bara pilla med för
-att det är märkligt tillfredsställande att höra sönderfallet klättra.
+A little toy instrument for Android. One wide slider across the screen, a green CRT
+panel, and five different click sounds you can switch between while it is running.
+Good for spooking people in the dark, laying under a film scene, or just fiddling
+with because it is oddly satisfying to hear the decay climb.
 
-Appen är 32 kB, begär **noll behörigheter** och innehåller **inga ljudfiler**.
-Varje knäpp räknas fram från grunden när appen startar.
+The app is 32 kB, asks for **zero permissions**, and ships **no audio files at all**.
+Every click is computed from scratch when the app starts.
 
-## Ljuden
+## The sounds
 
-Fem karaktärer, alla byggda på samma modell — en spänningsspik exciterar tre
-resonatorer som klingar av. Det som skiljer dem åt är vilken sorts apparat man
-tänker sig: hur stor lådan är, om högtalaren sitter i en bakelitburk eller i ett
-öronskal, hur hårt slutsteget drivs.
+Five characters, all built on the same model — a voltage spike excites three
+resonators that ring down. What separates them is the kind of instrument you
+imagine: how big the box is, whether the speaker sits in a bakelite case or an
+earpiece, how hard the output stage is driven.
 
-| # | Ljud | Karaktär | Hörbar längd |
-|---|------|----------|--------------|
-| 1 | **TORRT** | liten billig burk, tunt och snärtigt | 3,9 ms |
-| 2 | **DOSIMETER** | sovjetisk, hålig bakelitklang | 7,6 ms |
-| 3 | **HÖRLUR** | öronsnäcka, rent och kort "tk" | 2,0 ms |
-| 4 | **PIEZO** | modern digital mätare, ringer tonalt | 8,3 ms |
-| 5 | **SKRAMMEL** | grov och smutsig, blir ett vrål i toppen | 7,3 ms |
+| # | Sound | Character | Audible length |
+|---|-------|-----------|----------------|
+| 1 | **DRY** | small cheap tin can, thin and snappy | 4.0 ms |
+| 2 | **DOSIMETER** | soviet, hollow bakelite ring | 11.4 ms |
+| 3 | **EARPIECE** | headphone, clean and short "tk" | 2.0 ms |
+| 4 | **PIEZO** | modern digital meter, rings tonally | 8.1 ms |
+| 5 | **RATTLE** | coarse and dirty, becomes a roar at the top | 6.8 ms |
 
-## Hur det låter äkta
+## Why it sounds real
 
-Det som avslöjar en dålig geigersimulering är att den tickar jämnt. Riktigt
-radioaktivt sönderfall är slumpmässigt — atomerna hör inte av sig till varandra
-först. Antalet sönderfall under ett tidsfönster följer en **poissonfördelning**, så
-för varje 10-millisekundersblock drar motorn ett slumptal ur den fördelningen och
-placerar pulserna på slumpade sampelpositioner.
+What gives away a bad Geiger simulation is that it ticks evenly. Real radioactive
+decay is random — atoms do not check with each other first. The number of decays in
+a time window follows a **Poisson distribution**, so for every 10 millisecond block
+the engine draws a random count from that distribution and scatters the clicks at
+random sample positions.
 
-Resultatet: klungor och luckor, precis som i verkligheten. Uppmätt på det färdiga
-bygget blir kvoten varians/medelvärde 1,06 — en äkta poissonprocess ligger på 1,0.
+The result is clusters and gaps, exactly like the real thing. Measured on the
+finished build, the variance-to-mean ratio comes out at 1.06 — a true Poisson
+process sits at 1.0.
 
-Pulserna mixas sampel för sampel rakt ned i en `AudioTrack`-buffert i låglägesläge,
-inte som staplade uppspelningar. Därför håller timingen hela vägen upp till 1400
-pulser i sekunden, för ungefär 1,7 % av en processorkärna.
+Clicks are mixed sample by sample straight into an `AudioTrack` buffer in
+low-latency mode, rather than stacked as separate playbacks. That keeps the timing
+honest all the way up to 1400 counts per second, for about 1.7 % of one CPU core.
 
-## Installera
+## Install
 
-Hämta senaste APK-filen under [**Releases**](../../releases) och öppna den på
-telefonen. Android frågar om lov att installera från okänd källa — det är
-förväntat för en app som inte kommer från Play Store.
+Grab the latest APK from [**Releases**](../../releases) and open it on your phone.
+Android will ask permission to install from an unknown source — expected for an app
+that does not come from the Play Store.
 
-Med kabel och USB-felsökning påslagen går det också så här:
+With a cable and USB debugging enabled it also works like this:
 
 ```bash
 adb install RadOMeter-1.0.apk
 ```
 
-Kräver Android 7.0 eller senare.
+Requires Android 7.0 or later.
 
-## Bygga själv
+## Build it yourself
 
 ```bash
 cd android
 ./gradlew assembleDebug
 ```
 
-APK:n hamnar i `android/app/build/outputs/apk/debug/`. Behöver du ett
-release-bygge lägger du en egen `keystore.properties` i `android/` med
-`storeFile`, `storePassword`, `keyAlias` och `keyPassword` — den och själva
-nyckellagret hålls medvetet utanför git.
+The APK lands in `android/app/build/outputs/apk/debug/`. For a release build, drop
+your own `keystore.properties` into `android/` with `storeFile`, `storePassword`,
+`keyAlias` and `keyPassword` — that file and the keystore itself are deliberately
+kept out of git.
 
-## Innehåll
+## Layout
 
 ```
-android/                      appen
+android/                      the app
   app/src/main/java/se/william/radometer/
-    GeigerEngine.kt           ljudsyntes, poissonschema, AudioTrack-mixern
-    RadSlider.kt              reglaget, ritat för hand
-    MainActivity.kt           panelen och livscykeln
-poc/index.html                webbversionen som allt började med
-docs/                         skärmbilder
+    GeigerEngine.kt           synthesis, Poisson scheduling, the AudioTrack mixer
+    RadSlider.kt              the slider, drawn by hand
+    MainActivity.kt           the panel and the lifecycle
+poc/index.html                the web version this all started as
+docs/                         screenshots
 ```
 
-`poc/index.html` är en fristående sida — öppna den i valfri webbläsare och du får
-samma fem ljud via Web Audio, med tangenterna 1–5 för att växla mellan dem.
+`poc/index.html` is standalone — open it in any browser and you get the same five
+sounds through Web Audio, with keys 1–5 to switch between them.
 
-## Det behöver knappast sägas
+## Hardly needs saying
 
-Appen mäter ingenting. Den har ingen sensor, läser ingen omgivning och vet inte om
-du står i en källare eller i Pripjat. Siffrorna i µSv/h är påhittade och räknas
-rakt av från reglagets läge. **Använd den aldrig till någonting som rör riktig
-strålsäkerhet.**
+This app measures nothing. It has no sensor, reads no surroundings, and has no idea
+whether you are standing in a basement or in Pripyat. The µSv/h figures are invented
+and derived straight from the slider position. **Never use it for anything to do with
+actual radiation safety.**

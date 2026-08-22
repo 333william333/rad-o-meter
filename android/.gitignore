@@ -1,10 +1,10 @@
-# Byggresultat
+# Build output
 build/
 .gradle/
 *.apk
 *.aab
 
-# Lokala sökvägar och signeringsnycklar — ska aldrig till git
+# Local paths and signing keys - must never reach git
 local.properties
 keystore.properties
 keystore/
