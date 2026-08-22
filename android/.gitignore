@@ -1,0 +1,17 @@
+# Byggresultat
+build/
+.gradle/
+*.apk
+*.aab
+
+# Lokala sökvägar och signeringsnycklar — ska aldrig till git
+local.properties
+keystore.properties
+keystore/
+*.jks
+*.keystore
+
+.DS_Store
+.idea/
+*.iml
+captures/
